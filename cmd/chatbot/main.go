@@ -8,6 +8,9 @@ import (
 )
 
 func main() {
-	var bot chat.Bot
+	bot, err := chat.NewBot()
+	if err != nil {
+		log.Fatal(err)
+	}
 	log.Fatal(bot.Serve(context.Background()))
 }
