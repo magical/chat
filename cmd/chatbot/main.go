@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"log"
 
 	"github.com/magical/chat"
@@ -12,5 +11,5 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Fatal(bot.Serve(context.Background()))
+	log.Fatal(bot.Serve())
 }

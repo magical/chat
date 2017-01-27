@@ -1,9 +1,6 @@
 package chat
 
-import (
-	"context"
-	"fmt"
-)
+import "fmt"
 
 /*
 
@@ -73,13 +70,11 @@ func NewBot() (*Bot, error) {
 
 // Serve starts the bot.
 // TODO: come up with a funnier name
-func (b *Bot) Serve(ctx context.Context) error {
+func (b *Bot) Serve() error {
 	for {
 		select {
 		case m := <-b.messageChan:
 			go b.dispatch(m)
-		case <-ctx.Done():
-			return ctx.Err()
 		}
 	}
 }
