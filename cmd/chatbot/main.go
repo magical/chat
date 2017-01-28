@@ -11,8 +11,9 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	bot.Handle(bot.HandlerFunc(func(b *chat.Bot, m *chat.Message) {
+	bot.Handle(chat.HandlerFunc(func(b *chat.Bot, m *chat.Message) {
 		b.Respond(m, "hi")
 	}))
+	bot.Join("ircs://irc.veekun.com/magical")
 	log.Fatal(bot.Serve())
 }

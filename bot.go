@@ -1,6 +1,10 @@
 package chat
 
-import "fmt"
+import (
+	"fmt"
+	"log"
+	"sync"
+)
 
 /*
 
@@ -24,6 +28,7 @@ Should be fully configurable via chat.
 */
 
 type Bot struct {
+	mu          sync.Mutex
 	conn        []Conn
 	plugin      []Plugin
 	messageChan chan *Message
@@ -102,14 +107,17 @@ func (b *Bot) dispatch(m *Message) {
 func (b *Bot) Send(target Person, message string) {
 	// Figure out which conn this target corresponds to
 	// XXX
+	b.mu.Lock()
 	c := b.conn[0]
+	b.mu.Unlock()
 
 	c.Send(target, message)
 }
 
 // Respond sends a message in response to another message
 func (b *Bot) Respond(originalMessage *Message, response string) {
-	b.Send(originalMessage.From, fmt.Sprint("%s: %s", originalMessage.From, response))
+	log.Printf("sending response to %s: %q", originalMessage.Room, response)
+	b.Send(Person(originalMessage.Room), fmt.Sprintf("%s: %s", originalMessage.From, response))
 }
 
 func (b *Bot) Handle(h Plugin) {
@@ -120,4 +128,14 @@ type HandlerFunc func(b *Bot, m *Message)
 
 func (f HandlerFunc) Event(b *Bot, m *Message) {
 	f(b, m)
+}
+
+func (b *Bot) Join(channel string) {
+	// XXX
+	c, err := DialIRC(channel, b.messageChan)
+	if err != nil {
+		log.Printf("error joining %s: %v", channel, err)
+		return
+	}
+	b.conn = append(b.conn, c)
 }
