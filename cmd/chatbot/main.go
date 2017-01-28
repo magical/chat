@@ -11,5 +11,8 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	bot.Handle(bot.HandlerFunc(func(b *chat.Bot, m *chat.Message) {
+		b.Respond(m, "hi")
+	}))
 	log.Fatal(bot.Serve())
 }

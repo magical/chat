@@ -33,7 +33,7 @@ type Conn interface {
 	Send(to Person, message string) error
 }
 
-// XXX handler?
+// XXX Handler?
 type Plugin interface {
 	Event(b *Bot, m *Message)
 }
@@ -110,4 +110,14 @@ func (b *Bot) Send(target Person, message string) {
 // Respond sends a message in response to another message
 func (b *Bot) Respond(originalMessage *Message, response string) {
 	b.Send(originalMessage.From, fmt.Sprint("%s: %s", originalMessage.From, response))
+}
+
+func (b *Bot) Handle(h Plugin) {
+	b.plugin = append(b.plugin, h)
+}
+
+type HandlerFunc func(b *Bot, m *Message)
+
+func (f HandlerFunc) Event(b *Bot, m *Message) {
+	f(b, m)
 }
