@@ -20,6 +20,8 @@ type IRCConn struct {
 	messageChan chan<- *Message
 	br          *bufio.Reader // owned by readloop
 
+	nick string // our current nickname
+
 	// protects connected
 	mu sync.Mutex
 	// whether we have completed the welcome sequence
@@ -49,6 +51,7 @@ func DialIRC(server string, messageChan chan<- *Message) (*IRCConn, error) {
 	c := &IRCConn{
 		sock:        sock,
 		br:          bufio.NewReaderSize(sock, ircMaxLine),
+		nick:        "magicalbot",
 		messageChan: messageChan,
 		connected:   false,
 	}
@@ -169,16 +172,22 @@ func (c *IRCConn) handlePrivmsg(user string, params []string) {
 	// :user PRIVMSG channel :msg
 	if len(params) != 2 {
 		log.Printf("IRCConn.handlePrivmsg: malformed PRIVMSG %q", params)
+		return
+	}
+	if striphost(user) == c.nick {
+		log.Printf("ignoring message from self: %q", params)
+		return
 	}
 	channel := params[0]
 	text := params[1]
 	var m Message
 	m.Conn = c
-	m.From = Person(string(user))
-	m.Room = Room(channel) // TODO: multiple receivers?
+	m.From = Person(striphost(user))
+	if channel != c.nick {
+		m.Room = Room(channel) // TODO: multiple receivers?
+	}
 	m.RawText = text
-	// TODO strip receiver from mesg
-	m.Text = text
+	m.Text = text // TODO strip receiver from mesg
 	c.messageChan <- &m
 }
 
@@ -189,10 +198,18 @@ func (c *IRCConn) Send(to Person, message string) error {
 
 func (c *IRCConn) Respond(m *Message, response string) error {
 	if m.Room != "" {
-		to := striphost(string(m.From))
+		to := m.From
+		if string(m.Room) == c.nick {
+			log.Printf("error: tried to send message to self: %q", response)
+			return errors.New("invalid receiver")
+		}
 		fmt.Fprintf(c.sock, "PRIVMSG %s :%s: %s\r\n", m.Room, to, response)
 		return nil
 	} else {
+		if string(m.From) == c.nick {
+			log.Printf("error: tried to send message to self: %q", response)
+			return errors.New("invalid receiver")
+		}
 		return c.Send(m.From, response)
 	}
 }
