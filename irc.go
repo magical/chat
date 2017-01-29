@@ -70,12 +70,6 @@ func (c *IRCConn) connect() {
 	go c.writeloop()
 }
 
-var (
-	privmsg = []byte("PRIVMSG")
-	ping    = []byte("PING")
-	space   = []byte{' '}
-)
-
 func (c *IRCConn) readloop() {
 	r := textproto.NewReader(c.br)
 	for {
@@ -91,37 +85,92 @@ func (c *IRCConn) readloop() {
 		log.Printf("%q", line)
 		// :subject action object rest
 		// BUG doesn't handle multiple spaces
-		parts := bytes.SplitN(line, space, 3)
-		if len(parts) != 3 || parts[0][0] != ':' {
-			log.Printf("IRCConn.loop: malformed line %q", line)
+		subject, command, params, err := splitline(line)
+		if err != nil {
+			log.Printf("IRCConn.loop: malformed line: %q", line)
 			continue
 		}
-		subject := parts[0]
-		command := parts[1]
-		params := parts[2]
-		if bytes.Equal(command, ping) {
-			c.write("PONG", params)
-		} else if bytes.Equal(command, privmsg) {
+		switch command {
+		case "PING":
+			if len(params) == 1 {
+				c.write("PONG", params[0]) // XXX
+				log.Println("ponging")
+			}
+		case "PRIVMSG":
 			c.handlePrivmsg(subject, params)
 		}
 	}
 }
 
-func (c *IRCConn) write(command string, params []byte) {
-	_, err := fmt.Fprintf(c.sock, "%s %s", command, params)
+func splitline(b []byte) (subject, command string, params []string, err error) {
+	var i int
+	// general IRC syntax
+	//     [:subject] command {params} [:lastparam]
+	// only lastparam can contain spaces
+	b = bytes.TrimLeft(b, " ")
+	if len(b) == 0 {
+		err = errors.New("blank line")
+		return
+	}
+
+	// [:subject]
+	if b[0] == ':' {
+		i = bytes.IndexByte(b, ' ')
+		if i < 0 {
+			err = errors.New("malformed line")
+			return
+		}
+		subject = string(b[1:i])
+		b = bytes.TrimLeft(b[i+1:], " ")
+	}
+
+	// command
+	if len(b) == 0 || b[0] == ':' {
+		err = errors.New("malformed line")
+		return
+	}
+	i = bytes.IndexByte(b, ' ')
+	if i < 0 {
+		command = string(b)
+		return
+	}
+	command = string(b[:i])
+	b = bytes.TrimLeft(b[i+1:], " ")
+
+	// {params} [:lastparam]
+	for len(b) != 0 {
+		// [:lastparam]
+		if b[0] == ':' {
+			params = append(params, string(b[1:]))
+			break
+		}
+
+		// param
+		i = bytes.IndexByte(b, ' ')
+		if i < 0 {
+			params = append(params, string(b))
+			break
+		}
+		params = append(params, string(b[:i]))
+		b = bytes.TrimLeft(b[i+1:], " ")
+	}
+	return
+}
+
+func (c *IRCConn) write(command, param string) {
+	_, err := fmt.Fprintf(c.sock, "%s :%s\r\n", command, param)
 	if err != nil {
 		log.Println(err)
 	}
 }
 
-func (c *IRCConn) handlePrivmsg(user, params []byte) {
+func (c *IRCConn) handlePrivmsg(user string, params []string) {
 	// :user PRIVMSG channel :msg
-	parts := bytes.SplitN(params, space, 2)
-	if len(parts) != 2 || len(parts[1]) == 0 || parts[1][0] != ':' {
+	if len(params) != 2 {
 		log.Printf("IRCConn.handlePrivmsg: malformed PRIVMSG %q", params)
 	}
-	channel := string(parts[0])
-	text := string(parts[1])
+	channel := params[0]
+	text := params[1]
 	var m Message
 	m.From = Person(string(user))
 	m.Room = Room(channel) // TODO: multiple receivers?
