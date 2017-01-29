@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/textproto"
 	"net/url"
+	"strings"
 	"sync"
 	"time"
 )
@@ -172,6 +173,7 @@ func (c *IRCConn) handlePrivmsg(user string, params []string) {
 	channel := params[0]
 	text := params[1]
 	var m Message
+	m.Conn = c
 	m.From = Person(string(user))
 	m.Room = Room(channel) // TODO: multiple receivers?
 	m.RawText = text
@@ -183,6 +185,24 @@ func (c *IRCConn) handlePrivmsg(user string, params []string) {
 func (c *IRCConn) Send(to Person, message string) error {
 	fmt.Fprintf(c.sock, "PRIVMSG %s :%s\r\n", to, message)
 	return nil
+}
+
+func (c *IRCConn) Respond(m *Message, response string) error {
+	if m.Room != "" {
+		to := striphost(string(m.From))
+		fmt.Fprintf(c.sock, "PRIVMSG %s :%s: %s\r\n", m.Room, to, response)
+		return nil
+	} else {
+		return c.Send(m.From, response)
+	}
+}
+
+func striphost(s string) string {
+	i := strings.Index(s, "!")
+	if i >= 0 {
+		s = s[:i]
+	}
+	return s
 }
 
 func (c *IRCConn) writeloop() {}

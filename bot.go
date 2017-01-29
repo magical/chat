@@ -1,7 +1,6 @@
 package chat
 
 import (
-	"fmt"
 	"log"
 	"sync"
 )
@@ -36,6 +35,7 @@ type Bot struct {
 
 type Conn interface {
 	Send(to Person, message string) error
+	Respond(m *Message, response string) error
 }
 
 // XXX Handler?
@@ -116,8 +116,7 @@ func (b *Bot) Send(target Person, message string) {
 
 // Respond sends a message in response to another message
 func (b *Bot) Respond(originalMessage *Message, response string) {
-	log.Printf("sending response to %s: %q", originalMessage.Room, response)
-	b.Send(Person(originalMessage.Room), fmt.Sprintf("%s: %s", originalMessage.From, response))
+	originalMessage.Conn.Respond(originalMessage, response)
 }
 
 func (b *Bot) Handle(h Plugin) {
