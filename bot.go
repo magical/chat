@@ -24,6 +24,8 @@ Should be crash-only.
 
 Should be fully configurable via chat.
 
+A highly-available autonomous agent.
+
 */
 
 type Bot struct {
@@ -113,7 +115,15 @@ func (b *Bot) Send(target Person, message string) {
 	c.Send(target, message)
 }
 
-// Respond sends a message in response to another message
+func (b *Bot) SendRoom(room Room, message string) {
+	b.Send(Person(room), message)
+}
+
+// Respond sends a message in response to another message.
+//
+// If the original message was send privately, so will the response.
+// Otherwise, it will be sent to the same channel as the original
+// message, with the recipient's name prefixed appropriately.
 func (b *Bot) Respond(originalMessage *Message, response string) {
 	// XXX check if .Conn is nil
 	originalMessage.Conn.Respond(originalMessage, response)
