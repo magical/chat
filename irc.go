@@ -177,7 +177,7 @@ func (c *IRCConn) handlePrivmsg(user string, params []string) {
 	m.From = Person(string(user))
 	m.Room = Room(channel) // TODO: multiple receivers?
 	m.RawText = text
-	// TODO strip reciever from mesg
+	// TODO strip receiver from mesg
 	m.Text = text
 	c.messageChan <- &m
 }
