@@ -29,7 +29,7 @@ Should be fully configurable via chat.
 type Bot struct {
 	mu          sync.Mutex
 	conn        []Conn
-	plugin      []Plugin
+	handler     []Handler
 	messageChan chan *Message
 }
 
@@ -38,8 +38,7 @@ type Conn interface {
 	Respond(m *Message, response string) error
 }
 
-// XXX Handler?
-type Plugin interface {
+type Handler interface {
 	Event(b *Bot, m *Message)
 }
 
@@ -85,8 +84,8 @@ func (b *Bot) Serve() error {
 }
 
 func (b *Bot) dispatch(m *Message) {
-	for _, p := range b.plugin {
-		p.Event(b, m)
+	for _, h := range b.handler {
+		h.Event(b, m)
 	}
 }
 
@@ -116,11 +115,12 @@ func (b *Bot) Send(target Person, message string) {
 
 // Respond sends a message in response to another message
 func (b *Bot) Respond(originalMessage *Message, response string) {
+	// XXX check if .Conn is nil
 	originalMessage.Conn.Respond(originalMessage, response)
 }
 
-func (b *Bot) Handle(h Plugin) {
-	b.plugin = append(b.plugin, h)
+func (b *Bot) Handle(h Handler) {
+	b.handler = append(b.handler, h)
 }
 
 type HandlerFunc func(b *Bot, m *Message)
