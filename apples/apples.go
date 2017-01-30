@@ -185,7 +185,7 @@ func (g *Game) shuffle() {
 }
 func shuffleCards(cards []*Card) {
 	for i := range cards {
-		j := rand.Intn(len(cards) - i)
+		j := i + rand.Intn(len(cards)-i)
 		if i != j {
 			cards[i], cards[j] = cards[j], cards[i]
 		}
@@ -293,7 +293,7 @@ func (g *Game) startJudging(b *chat.Bot) {
 
 func shufflePlayedCards(cards []playedCard) {
 	for i := range cards {
-		j := rand.Intn(len(cards) - i)
+		j := i + rand.Intn(len(cards)-i)
 		if i != j {
 			cards[i], cards[j] = cards[j], cards[i]
 		}
